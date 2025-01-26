@@ -2,6 +2,6 @@ package main
 
 func main() {
 	load_config()
-
-	bot_start()
+	db := db_init()
+	bot_start(db)
 }
