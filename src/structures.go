@@ -2,12 +2,13 @@ package main
 
 import (
 	"database/sql"
-	"strings"
+	"log"
 )
 
 type User struct {
-	Id    int64
-	State []string
+	Id          int64
+	State       string
+	CreateHabit int64
 }
 
 type Habit struct {
@@ -26,13 +27,7 @@ type HabitComplete struct {
 // USER
 
 func (u *User) Insert(db *sql.DB) error {
-	states_str := ""
-
-	for _, v := range u.State {
-		states_str += (v + " ")
-	}
-
-	_, err := db.Exec("INSERT INTO Users (id, states) VALUES ($1, $2)", u.Id, states_str)
+	_, err := db.Exec("INSERT INTO Users (id, states, createhabit) VALUES ($1, $2, $3)", u.Id, u.State, u.CreateHabit)
 
 	if err != nil {
 		return err
@@ -42,13 +37,7 @@ func (u *User) Insert(db *sql.DB) error {
 }
 
 func (u *User) Update(db *sql.DB) error {
-	states_str := ""
-
-	for _, v := range u.State {
-		states_str += v
-	}
-
-	_, err := db.Exec("UPDATE Users SET states = $1 WHERE id = $2", states_str, u.Id)
+	_, err := db.Exec("UPDATE Users SET states = $1, createhabit = $2 WHERE id = $3", u.State, u.CreateHabit, u.Id)
 
 	if err != nil {
 		return err
@@ -70,12 +59,11 @@ func (u *User) Load(Id int64, db *sql.DB) error {
 	defer res.Close()
 
 	for res.Next() {
-		res.Scan(&id, &state_str)
+		res.Scan(&id, &state_str, &u.CreateHabit)
 	}
 
 	u.Id = id
-	u.State = strings.Split(state_str, " ")
-	u.State = u.State[:len(u.State)-1]
+	u.State = state_str
 
 	return nil
 }
@@ -83,7 +71,11 @@ func (u *User) Load(Id int64, db *sql.DB) error {
 // HABIT
 
 func (h *Habit) Insert(db *sql.DB) error {
-	res, err := db.Exec("INSERT INTO Habits (id, user, name, remtime) VALUES ($1, $2, $3, $4)", h.Id, h.UserId, h.Name, h.RemTime)
+	res, err := db.Exec("INSERT INTO Habits (user, name, remtime) VALUES ($1, $2, $3)", h.UserId, h.Name, h.RemTime)
+
+	if err != nil {
+		log.Println(err)
+	}
 
 	h.Id, _ = res.LastInsertId()
 

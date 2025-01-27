@@ -2,25 +2,39 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func StartCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+func StartCommand(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
 
 	user := User{}
 	user.Id = update.Message.From.ID
-	user.State = make([]string, 0)
-	user.State = append(user.State, "menu")
+	user.State = "menu"
 
-	user.Insert(db)
+	err := user.Insert(db)
+
+	if err != nil {
+		user.Update(db)
+	}
 
 	msg := tgbotapi.NewMessage(update.Message.From.ID, "")
-	msg.Text = fmt.Sprintf("Hello, %v!", update.Message.From.UserName)
+	msg.Text = "Main menu"
 
-	_, err := bot.Send(msg)
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Create habit", "create"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("My habits", "habits"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Statistic", "statistic"),
+		),
+	)
+
+	_, err = bot.Send(msg)
 
 	if err != nil {
 		log.Panicln(err)

@@ -7,8 +7,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var AppBot *tgbotapi.BotAPI
-
 func bot_start(db *sql.DB) {
 	AppBot, err := tgbotapi.NewBotAPI(Config.TgApi)
 
@@ -40,19 +38,19 @@ func bot_start(db *sql.DB) {
 
 		if update.Message != nil {
 			if update.Message.Text[0] == '/' {
-				command_router.run(update.Message.Command(), update, AppBot, db)
+				command_router.RunCommand(update.Message.Command(), update, AppBot, db)
 			} else {
-				text_router.run(update.Message.Text, update, AppBot, db)
+				text_router.RunText(update.Message.Text, update, AppBot, db)
 			}
 
 		} else if update.CallbackQuery != nil {
-			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
+			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
 
 			if _, err := AppBot.Request(callback); err != nil {
 				log.Panicln(err)
 			}
 
-			callback_router.run(update.CallbackQuery.Data, update, AppBot, db)
+			callback_router.RunCallback(update.CallbackQuery.Data, update, AppBot, db)
 		}
 
 	}
