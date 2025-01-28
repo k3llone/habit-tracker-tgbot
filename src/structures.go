@@ -2,7 +2,11 @@ package main
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"log"
+	"strconv"
+	"strings"
 )
 
 type User struct {
@@ -22,6 +26,14 @@ type HabitComplete struct {
 	Id      int64
 	HabitId int64
 	Date    string
+}
+
+type HabitMenu struct {
+	Id     int64
+	UserId int64
+	Pages  int64
+	Cpage  int64
+	Habits []int64
 }
 
 // USER
@@ -112,6 +124,16 @@ func (h *Habit) Load(Id int64, db *sql.DB) error {
 	return err
 }
 
+func (h *Habit) Delete(db *sql.DB) error {
+	_, err := db.Exec("DELETE FROM Habits WHERE id=$1", h.Id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // HABIT_COMPLETE
 
 func (hc *HabitComplete) Insert(db *sql.DB) error {
@@ -147,6 +169,82 @@ func (hc *HabitComplete) Load(Id int64, db *sql.DB) error {
 
 	for res.Next() {
 		res.Scan(&hc.Id, &hc.HabitId, &hc.Date)
+	}
+
+	return err
+}
+
+func (hc *HabitComplete) LoadDate(Date string, HabitId int64, db *sql.DB) error {
+	res, err := db.Query("SELECT * FROM HabitComplete WHERE date=$1 AND habit = $2", Date, HabitId)
+
+	if res == nil {
+		return errors.New("aaaa")
+	}
+
+	defer res.Close()
+
+	for res.Next() {
+		res.Scan(&hc.Id, &hc.HabitId, &hc.Date)
+	}
+
+	return err
+}
+
+// HABIT_MENU
+
+func (hm *HabitMenu) Insert(db *sql.DB) error {
+	habit_text := ""
+
+	for i, v := range hm.Habits {
+		if i == 0 {
+			habit_text += fmt.Sprintf("%v", v)
+		} else {
+			habit_text += fmt.Sprintf(" %v", v)
+		}
+	}
+
+	res, err := db.Exec("INSERT INTO HabitMenus (user, pages, cpage, habits) VALUES ($1, $2, $3, $4)", hm.UserId, hm.Pages, hm.Cpage, habit_text)
+
+	hm.Id, _ = res.LastInsertId()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hm *HabitMenu) Update(db *sql.DB) error {
+	_, err := db.Exec("UPDATE HabitMenus SET cpage = $1 WHERE id = $2", hm.Cpage, hm.Id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hm *HabitMenu) Load(Id int64, db *sql.DB) error {
+	res, err := db.Query("SELECT * FROM HabitMenus WHERE id=$1", Id)
+
+	if err != nil {
+		return err
+	}
+
+	defer res.Close()
+
+	habits_text := ""
+
+	for res.Next() {
+		res.Scan(&hm.Id, &hm.UserId, &hm.Pages, &hm.Cpage, &habits_text)
+	}
+
+	habits := strings.Split(habits_text, " ")
+	hm.Habits = make([]int64, 0)
+
+	for _, v := range habits {
+		num, _ := strconv.ParseInt(v, 10, 64)
+		hm.Habits = append(hm.Habits, num)
 	}
 
 	return err

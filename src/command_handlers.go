@@ -24,13 +24,13 @@ func StartCommand(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db 
 
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Create habit", "create"),
+			tgbotapi.NewInlineKeyboardButtonData("Create habit ⚒️", "create"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("My habits", "habits"),
+			tgbotapi.NewInlineKeyboardButtonData("My habits 📋", "myhabits"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Statistic", "statistic"),
+			tgbotapi.NewInlineKeyboardButtonData("Statistic 📈", "statistic"),
 		),
 	)
 
@@ -45,6 +45,7 @@ func CreateCommandRouter() *Router {
 	router := NewRouter()
 
 	router.register("start", StartCommand)
+	router.register("menu", StartCommand)
 
 	return router
 }
