@@ -10,8 +10,14 @@ import (
 func StartCommand(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
 
 	user := User{}
-	user.Id = update.Message.From.ID
-	user.State = "menu"
+
+	if data == "return" {
+		user.Id = update.CallbackQuery.From.ID
+		user.State = "menu"
+	} else {
+		user.Id = update.Message.From.ID
+		user.State = "menu"
+	}
 
 	err := user.Insert(db)
 
@@ -19,10 +25,8 @@ func StartCommand(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db 
 		user.Update(db)
 	}
 
-	msg := tgbotapi.NewMessage(update.Message.From.ID, "")
-	msg.Text = "Main menu"
-
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+	msg_Text := "Main menu"
+	msg_ReplyMarkup := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Create habit ⚒️", "create"),
 		),
@@ -34,10 +38,28 @@ func StartCommand(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db 
 		),
 	)
 
-	_, err = bot.Send(msg)
+	if data != "return" {
+		msg := tgbotapi.NewMessage(user.Id, "")
+		msg.Text = msg_Text
+		msg.ReplyMarkup = msg_ReplyMarkup
 
-	if err != nil {
-		log.Panicln(err)
+		_, err = bot.Send(msg)
+
+		if err != nil {
+			log.Panicln(err)
+		}
+	} else {
+		msg_edit := tgbotapi.NewEditMessageTextAndMarkup(user.Id,
+			update.CallbackQuery.Message.MessageID,
+			msg_Text,
+			msg_ReplyMarkup,
+		)
+
+		_, err = bot.Send(msg_edit)
+
+		if err != nil {
+			log.Panicln(err)
+		}
 	}
 }
 

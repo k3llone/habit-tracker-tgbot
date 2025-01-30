@@ -64,6 +64,8 @@ func CreateTimeTextHandler(data string, update tgbotapi.Update, bot *tgbotapi.Bo
 	if err != nil {
 		log.Println(err)
 	}
+
+	StartCommand(data, update, bot, db)
 }
 
 func CreateTextRouter() *Router {

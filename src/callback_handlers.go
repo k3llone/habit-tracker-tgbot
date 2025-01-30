@@ -31,7 +31,12 @@ func CreateCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.Bo
 	user.Update(db)
 
 	msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "")
-	msg.Text = "Enter name (no more 20 characters)"
+	msg.Text = "Enter name"
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Cancel ❌", fmt.Sprintf("cancel_%v", user.CreateHabit)),
+		),
+	)
 
 	_, err := bot.Send(msg)
 
@@ -46,8 +51,8 @@ func MyHabitsCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.
 	user.State = "myhabits"
 	user.Update(db)
 
-	msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "")
-	msg.Text = fmt.Sprintf("Your habits %v", update.CallbackQuery.From.UserName)
+	msg_Text := fmt.Sprintf("Your habits %v", update.CallbackQuery.From.UserName)
+	var msg_ReplyMarkup tgbotapi.InlineKeyboardMarkup
 
 	habit_buttons := [][]tgbotapi.InlineKeyboardButton{}
 	habits := make([]Habit, 0)
@@ -84,10 +89,28 @@ func MyHabitsCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.
 			habit_buttons = append(habit_buttons, row)
 		}
 
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(habit_buttons...)
+		return_button := tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return ↩️", "myhabitsreturn"),
+		)
+
+		habit_buttons = append(habit_buttons, return_button)
+
+		msg_ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(habit_buttons...)
 	} else {
-		msg.Text = "You dont have habits("
+		msg_Text = "You dont have habits("
+		return_button := tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return ↩️", "myhabitsreturn"),
+		)
+
+		habit_buttons = append(habit_buttons, return_button)
+		msg_ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(habit_buttons...)
 	}
+
+	msg := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID,
+		update.CallbackQuery.Message.MessageID,
+		msg_Text,
+		msg_ReplyMarkup,
+	)
 
 	_, err = bot.Send(msg)
 
@@ -114,17 +137,23 @@ func HabitMenuCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi
 	} else {
 		is_check = "❌"
 	}
-
-	msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "")
-	msg.Text = fmt.Sprintf("Name: %v\nTime: %v", habit.Name, habit.RemTime)
-
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+	msg_text := fmt.Sprintf("Name: %v\nTime: %v", habit.Name, habit.RemTime)
+	msg_ReplyMarkup := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("Check %v", is_check), fmt.Sprintf("complete_%v", habit.Id)),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Delete ❌", fmt.Sprintf("delete_%v", habit.Id)),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return ↩️", "habitreturn"),
+		),
+	)
+
+	msg := tgbotapi.NewEditMessageTextAndMarkup(update.CallbackQuery.From.ID,
+		update.CallbackQuery.Message.MessageID,
+		msg_text,
+		msg_ReplyMarkup,
 	)
 
 	if habit.UserId == user.Id {
@@ -164,6 +193,9 @@ func HabitCheckCallbackHandler(data string, update tgbotapi.Update, bot *tgbotap
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData("Delete ❌", fmt.Sprintf("delete_%v", habit.Id)),
 			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("Return ↩️", "habitreturn"),
+			),
 		)
 
 		msg := tgbotapi.NewEditMessageReplyMarkup(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, markup)
@@ -179,10 +211,37 @@ func HabitDeleteCallbackHandler(data string, update tgbotapi.Update, bot *tgbota
 	habit := Habit{}
 	habit.Load(habitid, db)
 	habit.Delete(db)
+
+	HabitReturnCallbackHandler(data, update, bot, db)
+}
+
+func CancelCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+	args := strings.Split(data, "_")
+
+	habitid, _ := strconv.ParseInt(args[1], 10, 64)
+	habit := Habit{}
+	habit.Load(habitid, db)
+	habit.Delete(db)
+
+	msg := tgbotapi.NewDeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID)
+
+	_, err := bot.Request(msg)
+
+	if err != nil {
+		log.Panicln(err)
+	}
 }
 
 func StatisticCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
 
+}
+
+func MyHabitsReturnCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+	StartCommand("return", update, bot, db)
+}
+
+func HabitReturnCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+	MyHabitsCallbackHandler(data, update, bot, db)
 }
 
 func CreateCallbackRouter() *Router {
@@ -194,6 +253,9 @@ func CreateCallbackRouter() *Router {
 	router.register("habit", HabitMenuCallbackHandler)
 	router.register("complete", HabitCheckCallbackHandler)
 	router.register("delete", HabitDeleteCallbackHandler)
+	router.register("habitreturn", HabitReturnCallbackHandler)
+	router.register("myhabitsreturn", MyHabitsReturnCallbackHandler)
+	router.register("cancel", CancelCallbackHandler)
 
 	return router
 }
