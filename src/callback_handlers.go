@@ -204,17 +204,6 @@ func HabitCheckCallbackHandler(data string, update tgbotapi.Update, bot *tgbotap
 	}
 }
 
-func HabitDeleteCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
-	args := strings.Split(data, "_")
-
-	habitid, _ := strconv.ParseInt(args[1], 10, 64)
-	habit := Habit{}
-	habit.Load(habitid, db)
-	habit.Delete(db)
-
-	HabitReturnCallbackHandler(data, update, bot, db)
-}
-
 func CancelCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
 	args := strings.Split(data, "_")
 
@@ -230,6 +219,45 @@ func CancelCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.Bo
 	if err != nil {
 		log.Panicln(err)
 	}
+}
+
+func HabitDeleteCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+	args := strings.Split(data, "_")
+
+	habitid, _ := strconv.ParseInt(args[1], 10, 64)
+
+	msg_Text := "Confirm delete"
+	msg_ReplyMarkup := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Confirm ✅", fmt.Sprintf("confirmdelete_%v", habitid)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Cancel ❌", fmt.Sprintf("canceldelete_%v", habitid)),
+		),
+	)
+	msg := tgbotapi.NewEditMessageTextAndMarkup(
+		update.CallbackQuery.From.ID,
+		update.CallbackQuery.Message.MessageID,
+		msg_Text,
+		msg_ReplyMarkup,
+	)
+
+	bot.Send(msg)
+}
+
+func ConfirmDeleteCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+	args := strings.Split(data, "_")
+
+	habitid, _ := strconv.ParseInt(args[1], 10, 64)
+	habit := Habit{}
+	habit.Load(habitid, db)
+	habit.Delete(db)
+
+	HabitReturnCallbackHandler(data, update, bot, db)
+}
+
+func CancelDeleteCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
+	HabitMenuCallbackHandler(data, update, bot, db)
 }
 
 func StatisticCallbackHandler(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) {
@@ -256,6 +284,8 @@ func CreateCallbackRouter() *Router {
 	router.register("habitreturn", HabitReturnCallbackHandler)
 	router.register("myhabitsreturn", MyHabitsReturnCallbackHandler)
 	router.register("cancel", CancelCallbackHandler)
+	router.register("confirmdelete", ConfirmDeleteCallbackHandler)
+	router.register("canceldelete", CancelDeleteCallbackHandler)
 
 	return router
 }

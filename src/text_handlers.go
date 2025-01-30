@@ -39,7 +39,7 @@ func CreateNameTextHandler(data string, update tgbotapi.Update, bot *tgbotapi.Bo
 	_, err := bot.Send(msg)
 
 	if err != nil {
-		log.Println(err)
+		log.Panicln(err)
 	}
 }
 

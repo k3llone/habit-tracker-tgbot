@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -46,14 +45,14 @@ func (r *Router) RunCallback(data string, update tgbotapi.Update, bot *tgbotapi.
 
 func (r *Router) RunText(data string, update tgbotapi.Update, bot *tgbotapi.BotAPI, db *sql.DB) bool {
 	user := User{}
-	err := user.Load(update.Message.From.ID, db)
-	log.Println(err)
+	user.Load(update.Message.From.ID, db)
+	//	log.Println(err)
 
 	handler, exists := r.Map[user.State]
 
-	log.Println(user)
+	//	log.Println(user)
 
-	log.Printf("Text handler %v %v exists: %v", user.State, data, exists)
+	//	log.Printf("Text handler %v %v exists: %v", user.State, data, exists)
 
 	if exists {
 		handler(data, update, bot, db)
